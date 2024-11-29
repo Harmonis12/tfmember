@@ -1,43 +1,37 @@
 <?php
-// Memastikan form disubmit dan id_user ada di dalam input 'catatan'
-if (isset($_POST['catatan'])) {
-    $id_user = $_POST['catatan']; // id_user yang didapat dari QR Code
+// Mengambil data dari query string (misalnya dari scan QR Code)
+$id_user = isset($_GET['id_user']) ? $_GET['id_user'] : ''; // Ambil id_user dari URL jika ada
 
-    $token = "ZG11bHNFRXRtajUvbkdnWUlxU1plRzNYbzh3NGN1ZFdxd3h1dFBFYmpUZ2w5RHpneHJMWUxDUFhyQVc5SE80d3JielB0N21KdzVLUlBOcTk4NnRvcitUVDZhL01EMUV5WjRzTWJydU90Q013Q2M4UDlDQVYwaFk0Vmc1bVF5bnBWTU5uQUtSSnkvNUc4SmdaUHNOYTRoVTZvcEh2ZkxkMUlUd3FXaUg2L3lWNnpKMDVlYjgxUDVMVExtQkhMeW1B"; // Token API Anda
-    $header = array(
-        "Authorization: Bearer " . $token,
-        "Content-Type: application/json"
+$nama_user = '';
+$saldo_user = '';
+
+// Jika id_user ada, maka ambil nama_user dan saldo_user menggunakan API
+if ($id_user) {
+    $token = "QXc4ejh5dU5GUk40QTdsY3lSSHltZHFhOC8vM3hnM3hlNkFHQy9aM1p1RWppMHIrWnRQTTJ2a3lqRThqWVR6OHJielB0N21KdzVLUlBOcTk4NnRvcjU3K21QMkhOTnNZc2ovWm5rZmxQQS85SXZvSHNmRXlpTUlxQVdJbDhJa2EwR1Ztd1dSVmVWYWtFTmhQQWxFS2FVYmFXMUd1TjhpMzkzbjhScEZEZGs0djVoMnhsUVU4V3dwME9kbkJXMzBs"; // Ganti dengan API key Anda
+    $header = array("Authorization: Bearer " . $token);
+
+    // Persiapkan body request untuk mengambil data berdasarkan id_user
+    $post_body = array(
+        "id_user" => $id_user
     );
 
-    // Data yang akan dikirimkan di body request, hanya id_user saja yang diperlukan untuk mendapatkan nama_user
-    $post_data = array(
-        "id_user" => $id_user,  // Kirimkan id_user yang diperoleh dari input QR code
-        "tipe" => "tambah" // Menentukan tipe perubahan saldo, bisa disesuaikan jika diperlukan
-    );
-
-    // URL API untuk mendapatkan data nama_user berdasarkan id_user
-    $url = "https://bukaolshop.net/api/v1/member/saldo"; // Pastikan endpoint API benar
-
-    // Inisialisasi cURL untuk request
+    // Kirim request ke API
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);  // URL API
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $header);  // Header API
-    curl_setopt($ch, CURLOPT_POST, TRUE); // Menggunakan metode POST
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($post_data));  // Body request POST (mengirimkan id_user)
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);  // Agar hasil response dapat diterima
-
-    // Eksekusi cURL dan dapatkan response
+    curl_setopt($ch, CURLOPT_URL, "https://bukaolshop.net/api/v1/member/saldo");
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+    curl_setopt($ch, CURLOPT_POST, TRUE);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_body)); // Pastikan data dikirim dalam format query
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     $hasil = curl_exec($ch);
     curl_close($ch);
 
-    // Decode hasil response JSON
-    $response_data = json_decode($hasil, true);
+    // Decode response dari API
+    $data = json_decode($hasil, true);
 
-    // Mengecek apakah request berhasil dan mendapatkan nama_user
-    if ($response_data['code'] == 200 && isset($response_data['nama_user'])) {
-        $nama_user = $response_data['nama_user'];  // Nama pengguna yang didapat dari API
-    } else {
-        $nama_user = "Pengguna tidak ditemukan!";
+    // Cek apakah status sukses
+    if ($data['status'] === 'ok') {
+        $nama_user = $data['nama_user']; // Ambil nama_user
+        $saldo_user = $data['jumlah']; // Ambil saldo_user
     }
 }
 ?>
@@ -49,7 +43,7 @@ if (isset($_POST['catatan'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Code Transfer</title>
     <style>
-        /* Style CSS Anda tetap sama seperti sebelumnya */
+        /* CSS styles seperti sebelumnya */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -169,6 +163,7 @@ if (isset($_POST['catatan'])) {
             background-color: #0056b3;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -183,12 +178,12 @@ if (isset($_POST['catatan'])) {
             <img src="https://cdn-icons-png.flaticon.com/512/893/893257.png" alt="Wallet Icon">
             <div class="saldo-details">
                 <div class="label">Saldo Anda:</div>
-                <div class="amount">Rp {{saldo_user}}</div>
+                <div class="amount">Rp <?= $saldo_user ?></div> <!-- Menampilkan saldo yang didapatkan dari API -->
             </div>
         </div>
 
         <!-- Form -->
-        <form id="transferForm" method="POST" action="">
+        <form id="transferForm" method="GET" action="https://olshopgue.bukaolshop.site/produk/ini-judul-produk-828128">
             <!-- Kotak Khusus Nominal Transfer -->
             <div class="form-group">
                 <label style="font-weight: bold; margin-bottom: 5px; display: block;">Masukkan Nominal Transfer</label>
@@ -203,7 +198,7 @@ if (isset($_POST['catatan'])) {
                 <label style="font-weight: bold; margin-bottom: 5px; display: block;">ID QR Code Tujuan</label>
                 <div class="qr-input">
                     <!-- Input untuk ID QR Code -->
-                    <input class="qrResult" type="text" name="catatan" id="qrResult" placeholder="Masukkan ID QR Code Tujuan" value="<?php echo isset($id_user) ? $id_user : ''; ?>">
+                    <input class="qrResult" type="text" name="catatan" id="qrResult" placeholder="Masukkan ID QR Code Tujuan">
                     <a href="https://sdshoop.bukaolshop.site/scan_all">
                         <img src="https://cdn-icons-png.flaticon.com/512/2991/2991148.png" alt="Scan QR">
                     </a>
@@ -219,14 +214,74 @@ if (isset($_POST['catatan'])) {
                 <button type="submit">Kirim</button>
             </div>
         </form>
-
-        <!-- Tampilkan Nama User yang Ditemukan -->
-        <?php if (isset($nama_user)): ?>
-            <div>
-                <h4>Nama Tujuan: <?php echo $nama_user; ?></h4>
-            </div>
-        <?php endif; ?>
-
     </div>
+
+    <!-- Popup -->
+    <div class="popup" id="popup">
+        <h4>Konfirmasi Transfer</h4>
+        <p id="popupName">Nama Tujuan: <?= $nama_user ?></p> <!-- Menampilkan nama_user yang diambil dari API -->
+        <p id="popupAmount"></p>
+        <button id="confirmBtn">Konfirmasi</button>
+    </div>
+
+    <script>
+        // Ambil parameter ID User
+        const id_user = "<?= $id_user ?>"; // Ganti dengan parameter dinamis dari backend
+
+        // Generate QR Code
+        const qrCodeCanvas = document.getElementById("qrcode");
+        QRCode.toCanvas(qrCodeCanvas, id_user, { width: 150, margin: 1 });
+
+        // Mendengarkan event perubahan URL untuk mendapatkan hasil scan dari halaman baru
+        window.addEventListener("load", function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const scannedData = urlParams.get('scanned_data');  // Mengambil parameter 'scanned_data'
+            
+            if (scannedData) {
+                document.querySelector(".qrResult").value = scannedData;  // Menampilkan hasil scan pada input dengan class 'qrResult'
+            }
+        });
+
+        // Ketika form disubmit
+        document.getElementById("transferForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            const idQRCode = document.getElementById("qrResult").value;
+            const amount = document.getElementById("amount").value;
+
+            // Panggil API untuk mengambil nama pengguna berdasarkan ID QR
+            fetch(`https://bukaolshop.net/api/v1/member/saldo`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer eUhrM0VVUngrSTg0R2FFZEQwVnRUSVNhanY0V2o2NXY4VGwwQ1diblZtRFFuc2ZPVzFuWFpPQldDQUxmdUFKVHJielB0N21KdzVLUlBOcTk4NnRvcjJMcjlFaXozSGhleFlZc0w5eHZQMUNYUnQveE1YMCtFQ05ORTRDdUxUUm8yU1RITzdzb0NBMUhLa2VMUnZIMGxwT1lLanp6Z2ZuNW5wY1hBMk5rUTdQYkxtak02V3RZYWF5Rk1OSDMybStJ',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id_user: idQRCode })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    // Menampilkan popup dengan nama pengguna dan nominal
+                    document.getElementById("popupName").innerText = `Nama Tujuan: ${data.nama_user}`;
+                    document.getElementById("popupAmount").innerText = `Nominal Transfer: Rp ${amount}`;
+                    document.getElementById("popup").classList.add("show");
+                } else {
+                    alert("Pengguna tidak ditemukan!");
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Terjadi kesalahan. Silakan coba lagi.");
+            });
+        });
+
+        // Ketika tombol konfirmasi diklik
+        document.getElementById("confirmBtn").addEventListener("click", function() {
+            document.getElementById("popup").classList.remove("show");
+            alert("Transfer berhasil!");
+            // Anda bisa mengirim data atau melanjutkan ke proses selanjutnya disini
+        });
+    </script>
+
 </body>
 </html>
