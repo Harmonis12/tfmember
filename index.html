@@ -1,54 +1,43 @@
 <?php
-// Jika form disubmit, lakukan proses transfer
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Ambil data dari form
-    $id_user = $_POST['catatan'];  // ID User yang diinputkan di QR Code
-    $amount = $_POST['amount'];    // Nominal yang dimasukkan
-    $pin = $_POST['pin'];          // PIN pengguna
+// Memastikan form disubmit dan id_user ada di dalam input 'catatan'
+if (isset($_POST['catatan'])) {
+    $id_user = $_POST['catatan']; // id_user yang didapat dari QR Code
 
-    // Token API Anda
-    $token = "ZG11bHNFRXRtajUvbkdnWUlxU1plRzNYbzh3NGN1ZFdxd3h1dFBFYmpUZ2w5RHpneHJMWUxDUFhyQVc5SE80d3JielB0N21KdzVLUlBOcTk4NnRvcitUVDZhL01EMUV5WjRzTWJydU90Q013Q2M4UDlDQVYwaFk0Vmc1bVF5bnBWTU5uQUtSSnkvNUc4SmdaUHNOYTRoVTZvcEh2ZkxkMUlUd3FXaUg2L3lWNnpKMDVlYjgxUDVMVExtQkhMeW1B";
+    $token = "ZG11bHNFRXRtajUvbkdnWUlxU1plRzNYbzh3NGN1ZFdxd3h1dFBFYmpUZ2w5RHpneHJMWUxDUFhyQVc5SE80d3JielB0N21KdzVLUlBOcTk4NnRvcitUVDZhL01EMUV5WjRzTWJydU90Q013Q2M4UDlDQVYwaFk0Vmc1bVF5bnBWTU5uQUtSSnkvNUc4SmdaUHNOYTRoVTZvcEh2ZkxkMUlUd3FXaUg2L3lWNnpKMDVlYjgxUDVMVExtQkhMeW1B"; // Token API Anda
     $header = array(
         "Authorization: Bearer " . $token,
-        "Content-Type: application/json"  // Mengirimkan data dalam format JSON
+        "Content-Type: application/json"
     );
 
-    // Data yang akan dikirim ke API untuk mendapatkan nama pengguna
-    $post_body = array(
-        "id_user" => $id_user  // Kirim ID User yang dipindai
+    // Data yang akan dikirimkan di body request, hanya id_user saja yang diperlukan untuk mendapatkan nama_user
+    $post_data = array(
+        "id_user" => $id_user,  // Kirimkan id_user yang diperoleh dari input QR code
+        "tipe" => "tambah" // Menentukan tipe perubahan saldo, bisa disesuaikan jika diperlukan
     );
 
-    // Ubah array menjadi JSON
-    $json_body = json_encode($post_body);
+    // URL API untuk mendapatkan data nama_user berdasarkan id_user
+    $url = "https://bukaolshop.net/api/v1/member/saldo"; // Pastikan endpoint API benar
 
-    // Inisialisasi cURL untuk mengambil data nama pengguna
+    // Inisialisasi cURL untuk request
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, "https://bukaolshop.net/api/v1/member/nama");  // URL API untuk mendapatkan nama pengguna berdasarkan ID
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $header);  // Header request
-    curl_setopt($ch, CURLOPT_POST, TRUE);           // Mengirimkan data dengan metode POST
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $json_body);  // Data yang dikirimkan dalam format JSON
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);  // Agar respons API diterima dalam bentuk string
+    curl_setopt($ch, CURLOPT_URL, $url);  // URL API
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $header);  // Header API
+    curl_setopt($ch, CURLOPT_POST, TRUE); // Menggunakan metode POST
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($post_data));  // Body request POST (mengirimkan id_user)
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);  // Agar hasil response dapat diterima
 
-    // Eksekusi request
+    // Eksekusi cURL dan dapatkan response
     $hasil = curl_exec($ch);
-
-    // Cek apakah ada error dalam cURL
-    if(curl_errno($ch)) {
-        echo 'Error:' . curl_error($ch);
-    }
-
-    // Tutup koneksi cURL
     curl_close($ch);
 
-    // Decode hasil respons JSON dari API
+    // Decode hasil response JSON
     $response_data = json_decode($hasil, true);
 
-    // Jika respons sukses
-    if ($response_data['status'] == "success") {
-        $nama_user = $response_data['nama_user'];  // Nama pengguna dari API
-        $message = "Nama Tujuan: " . $nama_user . "<br>Nominal Transfer: Rp " . $amount;
+    // Mengecek apakah request berhasil dan mendapatkan nama_user
+    if ($response_data['code'] == 200 && isset($response_data['nama_user'])) {
+        $nama_user = $response_data['nama_user'];  // Nama pengguna yang didapat dari API
     } else {
-        $message = "Pengguna tidak ditemukan!";
+        $nama_user = "Pengguna tidak ditemukan!";
     }
 }
 ?>
@@ -60,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Code Transfer</title>
     <style>
-        /* Your existing CSS styles here */
+        /* Style CSS Anda tetap sama seperti sebelumnya */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -194,7 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <img src="https://cdn-icons-png.flaticon.com/512/893/893257.png" alt="Wallet Icon">
             <div class="saldo-details">
                 <div class="label">Saldo Anda:</div>
-                <div class="amount" id="saldo">Rp 0</div> <!-- Update this dynamically -->
+                <div class="amount">Rp {{saldo_user}}</div>
             </div>
         </div>
 
@@ -205,7 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <label style="font-weight: bold; margin-bottom: 5px; display: block;">Masukkan Nominal Transfer</label>
                 <div class="nominal-box">
                     <span>Rp</span>
-                    <input type="number" id="amount" name="amount" placeholder="0" required>
+                    <input type="number" id="amount" placeholder="0">
                 </div>
             </div>
 
@@ -213,7 +202,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <div class="form-group">
                 <label style="font-weight: bold; margin-bottom: 5px; display: block;">ID QR Code Tujuan</label>
                 <div class="qr-input">
-                    <input class="qrResult" type="text" name="catatan" id="qrResult" placeholder="Masukkan ID QR Code Tujuan" required>
+                    <!-- Input untuk ID QR Code -->
+                    <input class="qrResult" type="text" name="catatan" id="qrResult" placeholder="Masukkan ID QR Code Tujuan" value="<?php echo isset($id_user) ? $id_user : ''; ?>">
                     <a href="https://sdshoop.bukaolshop.site/scan_all">
                         <img src="https://cdn-icons-png.flaticon.com/512/2991/2991148.png" alt="Scan QR">
                     </a>
@@ -222,7 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             <div class="form-group">
                 <label style="font-weight: bold; margin-bottom: 5px; display: block;">PIN Anda</label>
-                <input type="password" placeholder="Masukkan PIN (6 Digit)" maxlength="6" id="pin" name="pin" required>
+                <input type="password" placeholder="Masukkan PIN (6 Digit)" maxlength="6" id="pin">
             </div>
 
             <div class="form-group">
@@ -230,12 +220,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
         </form>
 
-        <!-- Tampilkan pesan hasil -->
-        <?php if (isset($message)): ?>
-            <div class="message">
-                <p><?php echo $message; ?></p>
+        <!-- Tampilkan Nama User yang Ditemukan -->
+        <?php if (isset($nama_user)): ?>
+            <div>
+                <h4>Nama Tujuan: <?php echo $nama_user; ?></h4>
             </div>
         <?php endif; ?>
+
     </div>
 </body>
 </html>
